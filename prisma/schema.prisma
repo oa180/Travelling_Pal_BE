@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        Int       @id @default(autoincrement())
+  name      String
+  type      CompanyType
+  offers    Offer[]
+  transports Transport[]
+  reviews   Review[]
+  createdAt DateTime  @default(now())
+}
+
+model Offer {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  price       Int
+  seats       Int
+  startDate   DateTime
+  endDate     DateTime
+  company     Company   @relation(fields: [companyId], references: [id])
+  companyId   Int
+  bookings    Booking[]
+}
+
+model Transport {
+  id        Int       @id @default(autoincrement())
+  type      String    // bus, flight, train
+  from      String
+  to        String
+  price     Int
+  seats     Int
+  company   Company   @relation(fields: [companyId], references: [id])
+  companyId Int
+  bookings  Booking[]
+}
+
+model Traveler {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  bookings  Booking[]
+  reviews   Review[]
+}
+
+model Booking {
+  id         Int       @id @default(autoincrement())
+  traveler   Traveler  @relation(fields: [travelerId], references: [id])
+  travelerId Int
+  offer      Offer?    @relation(fields: [offerId], references: [id])
+  offerId    Int?
+  transport  Transport?@relation(fields: [transportId], references: [id])
+  transportId Int?
+  status     BookingStatus @default(PENDING)
+  createdAt  DateTime  @default(now())
+}
+
+model Review {
+  id        Int       @id @default(autoincrement())
+  traveler  Traveler  @relation(fields: [travelerId], references: [id])
+  travelerId Int
+  company   Company   @relation(fields: [companyId], references: [id])
+  companyId Int
+  rating    Int
+  comment   String?
+  createdAt DateTime  @default(now())
+}
+
+enum CompanyType {
+  TOURISM
+  TRANSPORT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
