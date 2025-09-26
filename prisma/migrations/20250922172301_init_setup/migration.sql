@@ -1,4 +1,13 @@
 -- CreateTable
+CREATE TABLE `Impression` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `offerId` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `Company` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(191) NOT NULL,
@@ -17,7 +26,12 @@ CREATE TABLE `Offer` (
     `seats` INTEGER NOT NULL,
     `startDate` DATETIME(3) NOT NULL,
     `endDate` DATETIME(3) NOT NULL,
+    `destination` VARCHAR(191) NOT NULL,
+    `kind` ENUM('TRIP', 'TRANSPORT', 'COMBO') NOT NULL DEFAULT 'TRIP',
+    `impressions` INTEGER NOT NULL DEFAULT 0,
+    `clicks` INTEGER NOT NULL DEFAULT 0,
     `companyId` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -31,6 +45,9 @@ CREATE TABLE `Transport` (
     `price` INTEGER NOT NULL,
     `seats` INTEGER NOT NULL,
     `companyId` INTEGER NOT NULL,
+    `impressions` INTEGER NOT NULL DEFAULT 0,
+    `clicks` INTEGER NOT NULL DEFAULT 0,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -69,6 +86,20 @@ CREATE TABLE `Review` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `Package` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `offerId` INTEGER NULL,
+    `transportId` INTEGER NULL,
+    `price` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `Impression` ADD CONSTRAINT `Impression_offerId_fkey` FOREIGN KEY (`offerId`) REFERENCES `Offer`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
 -- AddForeignKey
 ALTER TABLE `Offer` ADD CONSTRAINT `Offer_companyId_fkey` FOREIGN KEY (`companyId`) REFERENCES `Company`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -89,3 +120,9 @@ ALTER TABLE `Review` ADD CONSTRAINT `Review_travelerId_fkey` FOREIGN KEY (`trave
 
 -- AddForeignKey
 ALTER TABLE `Review` ADD CONSTRAINT `Review_companyId_fkey` FOREIGN KEY (`companyId`) REFERENCES `Company`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Package` ADD CONSTRAINT `Package_offerId_fkey` FOREIGN KEY (`offerId`) REFERENCES `Offer`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Package` ADD CONSTRAINT `Package_transportId_fkey` FOREIGN KEY (`transportId`) REFERENCES `Transport`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

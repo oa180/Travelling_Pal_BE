@@ -19,47 +19,129 @@ async function main() {
     data: { name: 'EgyptAir Express', type: 'TRANSPORT' },
   });
 
-  // --- OFFERS ---
-  await prisma.offer.createMany({
-    data: [
-      {
-        title: 'Sharm El-Sheikh 4 Nights',
-        description: 'Luxury hotel stay with guided excursions',
-        price: 15000,
+  // --- OFFERS --- (use individual create to avoid OfferCreateManyInput type drift)
+  await Promise.all([
+    // Bali Escape
+    prisma.offer.create({
+      data: {
+        title: 'Bali Escape',
+        description: '7-day tropical getaway with beaches and temples.',
+        destination: 'Bali, Indonesia',
+        price: 899,
+        originalPrice: 1099,
+        imageUrl:
+          'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1200&h=800&fit=crop',
+        availableDates: ['2025-10-05', '2025-11-12', '2026-01-20'],
+        availableMonths: ['2025-10', '2025-11', '2026-01'],
+        durationDays: 7,
+        starRating: 4.8,
+        transportType: 'flight',
+        accommodationLevel: 'standard',
+        maxTravelers: 12,
+        includes: ['Flights', 'Hotel', 'Breakfast', 'Airport Transfers'],
+        providerId: 'prov_1',
+        providerName: 'Island Tours',
+        isActive: true,
+        country: 'Indonesia',
+        continent: 'Asia',
+        // Required legacy fields
         seats: 20,
-        startDate: new Date('2025-11-01'),
-        endDate: new Date('2025-11-05'),
+        startDate: new Date('2025-10-05'),
+        endDate: new Date('2025-10-12'),
         companyId: nileTours.id,
       },
-      {
-        title: 'Luxor & Aswan Nile Cruise',
-        description: '5 nights on a luxury cruise ship',
-        price: 18000,
-        seats: 15,
-        startDate: new Date('2025-12-01'),
-        endDate: new Date('2025-12-06'),
+    }),
+
+    // Paris City Lights
+    prisma.offer.create({
+      data: {
+        title: 'Paris City Lights',
+        description: '5 days in the City of Love with museum passes.',
+        destination: 'Paris, France',
+        price: 1299,
+        originalPrice: 1499,
+        imageUrl:
+          'https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=1200&h=800&fit=crop',
+        availableDates: ['2025-09-15', '2025-12-01', '2026-02-10'],
+        availableMonths: ['2025-09', '2025-12', '2026-02'],
+        durationDays: 5,
+        starRating: 4.9,
+        transportType: 'flight',
+        accommodationLevel: 'premium',
+        maxTravelers: 8,
+        includes: ['Flights', 'Hotel', 'Breakfast', 'Museum Pass'],
+        providerId: 'prov_2',
+        providerName: 'Elegance Travel',
+        isActive: true,
+        country: 'France',
+        continent: 'Europe',
+        seats: 16,
+        startDate: new Date('2025-09-15'),
+        endDate: new Date('2025-09-20'),
+        companyId: pyramidAdventures.id,
+      },
+    }),
+
+    // Tokyo Discovery
+    prisma.offer.create({
+      data: {
+        title: 'Tokyo Discovery',
+        description: '6-day culture and cuisine experience in Tokyo.',
+        destination: 'Tokyo, Japan',
+        price: 1599,
+        originalPrice: 1799,
+        imageUrl:
+          'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&h=800&fit=crop',
+        availableDates: ['2025-11-05', '2026-01-15', '2026-03-22'],
+        availableMonths: ['2025-11', '2026-01', '2026-03'],
+        durationDays: 6,
+        starRating: 4.7,
+        transportType: 'flight',
+        accommodationLevel: 'luxury',
+        maxTravelers: 10,
+        includes: ['Flights', 'Hotel', 'Breakfast', 'City Tour'],
+        providerId: 'prov_3',
+        providerName: 'Nippon Adventures',
+        isActive: true,
+        country: 'Japan',
+        continent: 'Asia',
+        seats: 20,
+        startDate: new Date('2025-11-05'),
+        endDate: new Date('2025-11-11'),
         companyId: nileTours.id,
       },
-      {
-        title: 'Cairo Pyramids Weekend',
-        description: '2 nights with a guided Giza pyramids tour',
-        price: 8000,
-        seats: 30,
-        startDate: new Date('2025-10-15'),
-        endDate: new Date('2025-10-17'),
+    }),
+
+    // Santorini Sunsets
+    prisma.offer.create({
+      data: {
+        title: 'Santorini Sunsets',
+        description: '4-day romantic escape with caldera views.',
+        destination: 'Santorini, Greece',
+        price: 1199,
+        originalPrice: 1399,
+        imageUrl:
+          'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=1200&h=800&fit=crop',
+        availableDates: ['2025-09-28', '2025-10-18', '2026-04-05'],
+        availableMonths: ['2025-09', '2025-10', '2026-04'],
+        durationDays: 4,
+        starRating: 4.9,
+        transportType: 'flight',
+        accommodationLevel: 'premium',
+        maxTravelers: 6,
+        includes: ['Flights', 'Hotel', 'Breakfast', 'Sunset Cruise'],
+        providerId: 'prov_4',
+        providerName: 'Aegean Getaways',
+        isActive: true,
+        country: 'Greece',
+        continent: 'Europe',
+        seats: 12,
+        startDate: new Date('2025-10-18'),
+        endDate: new Date('2025-10-22'),
         companyId: pyramidAdventures.id,
       },
-      {
-        title: 'Hurghada Beach Escape',
-        description: '3 nights at an all-inclusive resort',
-        price: 12000,
-        seats: 25,
-        startDate: new Date('2025-11-10'),
-        endDate: new Date('2025-11-13'),
-        companyId: pyramidAdventures.id,
-      },
-    ],
-  });
+    }),
+  ]);
 
   // --- TRANSPORT OPTIONS ---
   await prisma.transport.createMany({

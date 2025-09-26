@@ -2,6 +2,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Impression {
+  id        Int      @id @default(autoincrement())
+  offer     Offer    @relation(fields: [offerId], references: [id])
+  offerId   Int
+  createdAt DateTime @default(now())
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -18,16 +25,54 @@ model Company {
 }
 
 model Offer {
-  id          Int       @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   title       String
   description String
   price       Int
   seats       Int
   startDate   DateTime
   endDate     DateTime
-  company     Company   @relation(fields: [companyId], references: [id])
+  destination String
+  kind        OfferKind   @default(TRIP)
+  impressions Int         @default(0)
+  clicks      Int         @default(0)
+  company     Company     @relation(fields: [companyId], references: [id])
   companyId   Int
   bookings    Booking[]
+  packages    Package[]
+  impressionsLog Impression[]
+  createdAt   DateTime    @default(now())
+
+  // Added fields to enrich Offer info
+  originalPrice       Int?
+  imageUrl            String?
+  availableDates      Json?
+  durationDays        Int?
+  starRating          Float?
+  transportType       String?
+  accommodationLevel  String?
+  maxTravelers        Int?
+  includes            Json?
+  providerId          String?
+  providerName        String?
+  isActive            Boolean?   @default(true)
+  country             String?
+  continent           String?
+  availableMonths     Json?      // e.g., ["2025-10", "2025-11"] derived from availableDates
+  // Further enrichment fields
+  city                String?
+  currency            String?
+  galleryImages       Json?
+  tags                Json?
+  highlights          Json?
+  terms               String?
+  cancellationPolicy  String?
+  averageGroupAge     Int?
+  difficulty          String?
+  languages           Json?
+  lastMinuteDeal      Boolean?   @default(false)
+  featured            Boolean?   @default(false)
+  bookingUrl          String?
 }
 
 model Transport {
@@ -40,6 +85,10 @@ model Transport {
   company   Company   @relation(fields: [companyId], references: [id])
   companyId Int
   bookings  Booking[]
+  impressions Int     @default(0)
+  clicks      Int     @default(0)
+  packages    Package[]
+  createdAt   DateTime  @default(now())
 }
 
 model Traveler {
@@ -73,6 +122,16 @@ model Review {
   createdAt DateTime  @default(now())
 }
 
+model Package {
+  id          Int        @id @default(autoincrement())
+  offer       Offer?     @relation(fields: [offerId], references: [id])
+  offerId     Int?
+  transport   Transport? @relation(fields: [transportId], references: [id])
+  transportId Int?
+  price       Int
+  createdAt   DateTime   @default(now())
+}
+
 enum CompanyType {
   TOURISM
   TRANSPORT
@@ -83,3 +142,10 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
 }
+
+enum OfferKind {
+  TRIP
+  TRANSPORT
+  COMBO
+}
+
