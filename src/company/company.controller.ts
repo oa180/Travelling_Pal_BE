@@ -23,13 +23,22 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post('offers')
   @ApiOperation({ summary: 'Create a new offer' })
   @ApiBody({ type: CreateOfferDto })
   @ApiCreatedResponse({ description: 'Offer created successfully' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
-  addOffer(@Body() dto: CreateOfferDto) {
-    return this.companyService.addOffer(dto);
+  addOffer(
+    @Body() dto: CreateOfferDto,
+    @CurrentUser() user?: { companyId?: number | null },
+  ) {
+    // Auto-scope to the authenticated company when present. Allows admins to pass companyId in DTO.
+    const scopedDto = {
+      ...dto,
+      companyId: user?.companyId != null ? user.companyId : dto.companyId,
+    } as CreateOfferDto;
+    return this.companyService.addOffer(scopedDto);
   }
 
   @Put('offers/:id')
