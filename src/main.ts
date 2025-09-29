@@ -26,6 +26,7 @@ async function bootstrap() {
     .setTitle('Travel Pal API')
     .setDescription('API documentation for Travel Pal backend')
     .setVersion('1.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document, {

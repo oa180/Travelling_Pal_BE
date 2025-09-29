@@ -154,4 +154,217 @@ export class CompanyService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  // --- Analytics helpers
+  private parseDateRange(from?: string, to?: string) {
+    const now = new Date();
+    const end = to ? new Date(to) : now;
+    const start = from ? new Date(from) : new Date(end.getTime() - 7 * 24 * 3600 * 1000);
+    // Normalize to avoid invalid ranges
+    if (start > end) return { start: end, end: start };
+    return { start, end };
+  }
+
+  private dayKey(d: Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private monthKey(d: Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+  // --- Analytics: Summary
+  async analyticsSummary(params: { from?: string; to?: string; packageId?: string; destination?: string; companyId?: string }) {
+    const { start, end } = this.parseDateRange(params.from, params.to);
+    const companyId = params.companyId ? Number(params.companyId) : undefined;
+    const offerWhere: any = { };
+    if (companyId) offerWhere.companyId = companyId;
+    if (params.destination) offerWhere.destination = { contains: params.destination };
+    if (params.packageId) offerWhere.id = Number(params.packageId);
+
+    const [offers, bookingsAll] = await Promise.all([
+      this.prisma.offer.findMany({ where: offerWhere }),
+      this.prisma.booking.findMany({
+        where: {
+          createdAt: { gte: start, lte: end },
+          OR: [
+            { offer: companyId ? { companyId } : {} },
+            { transport: companyId ? { companyId } : {} },
+          ],
+        },
+        include: { offer: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    // Filter bookings to selected package/destination if provided
+    const bookings = bookingsAll.filter((b) => {
+      const o = b.offer;
+      if (!o) return false; // count only offer bookings for analytics
+      if (params.packageId && o.id !== Number(params.packageId)) return false;
+      if (params.destination && !(o.destination || '').includes(params.destination)) return false;
+      return true;
+    });
+
+    // Totals
+    const confirmed = bookings.filter((b) => b.status === 'CONFIRMED');
+    const revenueTotal = confirmed.reduce((s, b) => s + (b.offer?.price || 0), 0);
+    const bookingsTotal = confirmed.length;
+
+    // Impressions/Clicks from offers
+    const impressions = offers.reduce((s, o) => s + ((o as any).impressions || 0), 0);
+    const clicks = offers.reduce((s, o) => s + ((o as any).clicks || 0), 0);
+
+    const conversionDen = impressions > 0 ? impressions : (clicks > 0 ? clicks : 1);
+    const conversionRate = bookingsTotal / conversionDen;
+    const aov = bookingsTotal > 0 ? revenueTotal / bookingsTotal : 0;
+
+    // Funnel: "bookingStarts" = all bookings regardless of status in range
+    const funnel = {
+      impressions,
+      clicks,
+      bookingStarts: bookings.length,
+      bookings: bookingsTotal,
+    };
+
+    // Time series
+    const revenueSeriesMap = new Map<string, number>();
+    const bookingsSeriesMap = new Map<string, number>();
+    for (const b of bookings) {
+      const key = this.dayKey(b.createdAt);
+      const price = b.offer?.price || 0;
+      revenueSeriesMap.set(key, (revenueSeriesMap.get(key) || 0) + (b.status === 'CONFIRMED' ? price : 0));
+      bookingsSeriesMap.set(key, (bookingsSeriesMap.get(key) || 0) + (b.status === 'CONFIRMED' ? 1 : 0));
+    }
+    const toSeries = (map: Map<string, number>) =>
+      Array.from(map.entries())
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([date, value]) => ({ date, value }));
+
+    const timeSeries = {
+      revenue: toSeries(revenueSeriesMap),
+      bookings: toSeries(bookingsSeriesMap),
+      impressions: impressions ? [{ date: this.dayKey(end), value: impressions }] : [],
+      clicks: clicks ? [{ date: this.dayKey(end), value: clicks }] : [],
+    };
+
+    // By month and status distribution
+    const byMonthMap = new Map<string, number>();
+    const statusMap = new Map<string, number>();
+    for (const b of bookings) {
+      const month = this.monthKey(b.createdAt);
+      byMonthMap.set(month, (byMonthMap.get(month) || 0) + (b.status === 'CONFIRMED' ? 1 : 0));
+      statusMap.set(b.status.toLowerCase(), (statusMap.get(b.status.toLowerCase()) || 0) + 1);
+    }
+    const byMonth = Array.from(byMonthMap.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([month, bookings]) => ({ month, bookings }));
+    const statusDistribution = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
+
+    return {
+      revenueTotal,
+      bookingsTotal,
+      conversionRate,
+      aov,
+      impressions,
+      clicks,
+      funnel,
+      timeSeries,
+      byMonth,
+      statusDistribution,
+    };
+  }
+
+  // --- Analytics: Top packages
+  async topPackages(params: { from?: string; to?: string; sort?: 'revenue' | 'bookings' | 'ctr'; limit?: number; companyId?: string }) {
+    const { start, end } = this.parseDateRange(params.from, params.to);
+    const companyId = params.companyId ? Number(params.companyId) : undefined;
+
+    const offers = await this.prisma.offer.findMany({ where: companyId ? { companyId } : {}, select: { id: true, title: true, impressions: true, clicks: true, price: true } });
+    const offerMap = new Map<number, { title: string; impressions: number; clicks: number; price: number }>();
+    for (const o of offers) offerMap.set(o.id, { title: o.title, impressions: (o as any).impressions || 0, clicks: (o as any).clicks || 0, price: o.price });
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        createdAt: { gte: start, lte: end },
+        offer: companyId ? { companyId } : { },
+      },
+      include: { offer: true },
+    });
+
+    const map = new Map<number, { title: string; revenue: number; bookings: number; impressions: number; clicks: number }>();
+    for (const b of bookings) {
+      const o = b.offer;
+      if (!o) continue;
+      const cur = map.get(o.id) || { title: o.title, revenue: 0, bookings: 0, impressions: (o as any).impressions || 0, clicks: (o as any).clicks || 0 };
+      if (b.status === 'CONFIRMED') {
+        cur.revenue += o.price;
+        cur.bookings += 1;
+      }
+      map.set(o.id, cur);
+    }
+
+    let items = Array.from(map.entries()).map(([id, v]) => {
+      const ctr = v.impressions ? v.clicks / v.impressions : 0;
+      const aov = v.bookings ? v.revenue / v.bookings : 0;
+      return { packageId: String(id), title: v.title, revenue: v.revenue, bookings: v.bookings, impressions: v.impressions, clicks: v.clicks, ctr, aov };
+    });
+
+    const sort = params.sort || 'revenue';
+    items.sort((a, b) => (b[sort] as number) - (a[sort] as number));
+    items = items.slice(0, params.limit || 20);
+    return { items };
+  }
+
+  // --- Analytics: Recent bookings
+  async recentBookings(params: { from?: string; to?: string; limit?: number; companyId?: string }) {
+    const { start, end } = this.parseDateRange(params.from, params.to);
+    const companyId = params.companyId ? Number(params.companyId) : undefined;
+    const itemsRaw = await this.prisma.booking.findMany({
+      where: {
+        createdAt: { gte: start, lte: end },
+        OR: [
+          { offer: companyId ? { companyId } : {} },
+          { transport: companyId ? { companyId } : {} },
+        ],
+      },
+      include: { offer: true, traveler: true },
+      orderBy: { createdAt: 'desc' },
+      take: params.limit || 20,
+    });
+    const items = itemsRaw.map((b) => ({
+      id: String(b.id),
+      packageId: b.offer ? String(b.offer.id) : null,
+      packageTitle: b.offer?.title || null,
+      price: b.offer?.price || 0,
+      status: String(b.status).toLowerCase(),
+      createdAt: b.createdAt.toISOString(),
+      customer: { country: (b.traveler as any)?.country || null },
+    }));
+    return { items };
+  }
+
+  // --- Utility: Packages dropdown
+  async packages(params: { query?: string; companyId?: string }) {
+    const companyId = params.companyId ? Number(params.companyId) : undefined;
+    const where: any = companyId ? { companyId } : {};
+    if (params.query) where.title = { contains: params.query };
+    const items = await this.prisma.offer.findMany({ where, select: { id: true, title: true }, orderBy: { title: 'asc' }, take: 100 });
+    return { items: items.map((o) => ({ id: String(o.id), title: o.title })) };
+  }
+
+  // --- Utility: Destinations dropdown
+  async destinations(params: { companyId?: string }) {
+    const companyId = params.companyId ? Number(params.companyId) : undefined;
+    const rows = await this.prisma.offer.findMany({ where: companyId ? { companyId } : {}, select: { destination: true }, distinct: ['destination'] });
+    const items = rows
+      .map((r) => r.destination)
+      .filter((d): d is string => !!d)
+      .sort()
+      .map((d) => ({ value: d, label: d }));
+    return { items };
+  }
 }

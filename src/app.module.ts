@@ -12,6 +12,8 @@ import { AdminModule } from './admin/admin.module';
 import { IdentityMiddleware } from './common/middleware/identity.middleware';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ChatModule } from './chat/chat.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { ChatModule } from './chat/chat.module';
     AdminModule,
     AnalyticsModule,
     ChatModule,
+    AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

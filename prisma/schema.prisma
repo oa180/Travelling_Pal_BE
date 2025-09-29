@@ -15,111 +15,116 @@ datasource db {
 }
 
 model Company {
-  id        Int       @id @default(autoincrement())
-  name      String
-  type      CompanyType
-  offers    Offer[]
+  id         Int         @id @default(autoincrement())
+  name       String
+  type       CompanyType
+  offers     Offer[]
   transports Transport[]
-  reviews   Review[]
-  createdAt DateTime  @default(now())
+  reviews    Review[]
+  createdAt  DateTime    @default(now())
+  // Link to User (owner)
+  userId     Int?        @unique
+  user       User?       @relation(fields: [userId], references: [id])
 }
 
 model Offer {
-  id          Int         @id @default(autoincrement())
-  title       String
-  description String
-  price       Int
-  seats       Int
-  startDate   DateTime
-  endDate     DateTime
-  destination String
-  kind        OfferKind   @default(TRIP)
-  impressions Int         @default(0)
-  clicks      Int         @default(0)
-  company     Company     @relation(fields: [companyId], references: [id])
-  companyId   Int
-  bookings    Booking[]
-  packages    Package[]
+  id             Int          @id @default(autoincrement())
+  title          String
+  description    String
+  price          Int
+  seats          Int
+  startDate      DateTime
+  endDate        DateTime
+  destination    String
+  kind           OfferKind    @default(TRIP)
+  impressions    Int          @default(0)
+  clicks         Int          @default(0)
+  company        Company      @relation(fields: [companyId], references: [id])
+  companyId      Int
+  bookings       Booking[]
+  packages       Package[]
   impressionsLog Impression[]
-  createdAt   DateTime    @default(now())
+  createdAt      DateTime     @default(now())
 
   // Added fields to enrich Offer info
-  originalPrice       Int?
-  imageUrl            String?
-  availableDates      Json?
-  durationDays        Int?
-  starRating          Float?
-  transportType       String?
-  accommodationLevel  String?
-  maxTravelers        Int?
-  includes            Json?
-  providerId          String?
-  providerName        String?
-  isActive            Boolean?   @default(true)
-  country             String?
-  continent           String?
-  availableMonths     Json?      // e.g., ["2025-10", "2025-11"] derived from availableDates
+  originalPrice      Int?
+  imageUrl           String?
+  availableDates     Json?
+  durationDays       Int?
+  starRating         Float?
+  transportType      String?
+  accommodationLevel String?
+  maxTravelers       Int?
+  includes           Json?
+  providerId         String?
+  providerName       String?
+  isActive           Boolean? @default(true)
+  country            String?
+  continent          String?
+  availableMonths    Json? // e.g., ["2025-10", "2025-11"] derived from availableDates
   // Further enrichment fields
-  city                String?
-  currency            String?
-  galleryImages       Json?
-  tags                Json?
-  highlights          Json?
-  terms               String?
-  cancellationPolicy  String?
-  averageGroupAge     Int?
-  difficulty          String?
-  languages           Json?
-  lastMinuteDeal      Boolean?   @default(false)
-  featured            Boolean?   @default(false)
-  bookingUrl          String?
+  city               String?
+  currency           String?
+  galleryImages      Json?
+  tags               Json?
+  highlights         Json?
+  terms              String?
+  cancellationPolicy String?
+  averageGroupAge    Int?
+  difficulty         String?
+  languages          Json?
+  lastMinuteDeal     Boolean? @default(false)
+  featured           Boolean? @default(false)
+  bookingUrl         String?
 }
 
 model Transport {
-  id        Int       @id @default(autoincrement())
-  type      String    // bus, flight, train
-  from      String
-  to        String
-  price     Int
-  seats     Int
-  company   Company   @relation(fields: [companyId], references: [id])
-  companyId Int
-  bookings  Booking[]
-  impressions Int     @default(0)
-  clicks      Int     @default(0)
+  id          Int       @id @default(autoincrement())
+  type        String // bus, flight, train
+  from        String
+  to          String
+  price       Int
+  seats       Int
+  company     Company   @relation(fields: [companyId], references: [id])
+  companyId   Int
+  bookings    Booking[]
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
   packages    Package[]
   createdAt   DateTime  @default(now())
 }
 
 model Traveler {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String    @unique
-  bookings  Booking[]
-  reviews   Review[]
+  id       Int       @id @default(autoincrement())
+  name     String
+  bookings Booking[]
+  reviews  Review[]
+  // Link to User account
+  userId   Int?      @unique
+  user     User?     @relation(fields: [userId], references: [id])
 }
 
 model Booking {
-  id         Int       @id @default(autoincrement())
-  traveler   Traveler  @relation(fields: [travelerId], references: [id])
-  travelerId Int
-  offer      Offer?    @relation(fields: [offerId], references: [id])
-  offerId    Int?
-  transport  Transport?@relation(fields: [transportId], references: [id])
+  id          Int           @id @default(autoincrement())
+  traveler    Traveler      @relation(fields: [travelerId], references: [id])
+  travelerId  Int
+  offer       Offer?        @relation(fields: [offerId], references: [id])
+  offerId     Int?
+  transport   Transport?    @relation(fields: [transportId], references: [id])
   transportId Int?
-  status     BookingStatus @default(PENDING)
-  createdAt  DateTime  @default(now())
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
 }
 
 model Review {
-  id        Int       @id @default(autoincrement())
-  traveler  Traveler  @relation(fields: [travelerId], references: [id])
+  id         Int      @id @default(autoincrement())
+  traveler   Traveler @relation(fields: [travelerId], references: [id])
   travelerId Int
-  company   Company   @relation(fields: [companyId], references: [id])
-  companyId Int
-  rating    Int
-  comment   String?
-  createdAt DateTime  @default(now())
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  Int
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
 }
 
 model Package {
@@ -149,3 +154,21 @@ enum OfferKind {
   COMBO
 }
 
+// Authentication models
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String?   @unique
+  mobile       String?   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime  @default(now())
+  // Back-relations (1:1) - FK lives on Company/Traveler via userId
+  company      Company?
+  traveler     Traveler?
+}
+
+enum UserRole {
+  TRAVELER
+  COMPANY
+  ADMIN
+}

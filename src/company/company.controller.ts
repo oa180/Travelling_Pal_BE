@@ -13,6 +13,10 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { Query } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/roles.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Company')
 @Controller('company')
@@ -71,6 +75,83 @@ export class CompanyController {
   @ApiOkResponse({ description: 'Bookings retrieved successfully' })
   getBookings(@Param('id') id: string) {
     return this.companyService.bookings(+id);
+  }
+
+  // Analytics: summary
+  @UseGuards(JwtAuthGuard)
+  @Get('analytics/summary')
+  @ApiOperation({ summary: 'Analytics summary for company offers' })
+  @ApiOkResponse({ description: 'Summary computed successfully' })
+  summary(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('packageId') packageId?: string,
+    @Query('destination') destination?: string,
+    @Query('companyId') companyId?: string,
+    @CurrentUser() user?: { companyId?: number | null },
+  ) {
+    const scopedCompanyId = companyId ?? (user?.companyId != null ? String(user.companyId) : undefined);
+    return this.companyService.analyticsSummary({ from, to, packageId, destination, companyId: scopedCompanyId });
+  }
+
+  // Analytics: top packages
+  @UseGuards(JwtAuthGuard)
+  @Get('analytics/top-packages')
+  @ApiOperation({ summary: 'Top packages by revenue/bookings/ctr' })
+  @ApiOkResponse({ description: 'Top packages computed successfully' })
+  topPackages(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('sort') sort: 'revenue' | 'bookings' | 'ctr' = 'revenue',
+    @Query('limit') limit = '20',
+    @Query('companyId') companyId?: string,
+    @CurrentUser() user?: { companyId?: number | null },
+  ) {
+    const scopedCompanyId = companyId ?? (user?.companyId != null ? String(user.companyId) : undefined);
+    return this.companyService.topPackages({ from, to, sort, limit: Number(limit), companyId: scopedCompanyId });
+  }
+
+  // Analytics: recent bookings
+  @UseGuards(JwtAuthGuard)
+  @Get('analytics/recent-bookings')
+  @ApiOperation({ summary: 'Recent bookings list' })
+  @ApiOkResponse({ description: 'Recent bookings retrieved successfully' })
+  recentBookings(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit = '20',
+    @Query('companyId') companyId?: string,
+    @CurrentUser() user?: { companyId?: number | null },
+  ) {
+    const scopedCompanyId = companyId ?? (user?.companyId != null ? String(user.companyId) : undefined);
+    return this.companyService.recentBookings({ from, to, limit: Number(limit), companyId: scopedCompanyId });
+  }
+
+  // Packages dropdown
+  @UseGuards(JwtAuthGuard)
+  @Get('packages')
+  @ApiOperation({ summary: 'List packages (offers) for dropdown' })
+  @ApiOkResponse({ description: 'Packages retrieved successfully' })
+  packages(
+    @Query('query') query?: string,
+    @Query('companyId') companyId?: string,
+    @CurrentUser() user?: { companyId?: number | null },
+  ) {
+    const scopedCompanyId = companyId ?? (user?.companyId != null ? String(user.companyId) : undefined);
+    return this.companyService.packages({ query, companyId: scopedCompanyId });
+  }
+
+  // Destinations dropdown
+  @UseGuards(JwtAuthGuard)
+  @Get('destinations')
+  @ApiOperation({ summary: 'List destinations for dropdown' })
+  @ApiOkResponse({ description: 'Destinations retrieved successfully' })
+  destinations(
+    @Query('companyId') companyId?: string,
+    @CurrentUser() user?: { companyId?: number | null },
+  ) {
+    const scopedCompanyId = companyId ?? (user?.companyId != null ? String(user.companyId) : undefined);
+    return this.companyService.destinations({ companyId: scopedCompanyId });
   }
 }
 
